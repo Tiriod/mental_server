@@ -1,20 +1,8 @@
 from django.contrib import admin
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
-from .models import (
-    Activity,
-    Information,
-    Book,
-    ShareLoop,
-    User,
-    EmotionRecord,
-    Food,
-    Image,
-    Emotion,
-    Meditation,
-    Audio,
-    Action,
-)
+from .models import (Activity, Information, Book, ShareLoop, User, EmotionRecord, Food, Image, Emotion, Meditation,
+                     Audio, Action, )
 
 
 # 用户分享圈管理功能
@@ -28,7 +16,7 @@ class ShareLoopAdmin(admin.ModelAdmin):
     # 自定义动作示例
     actions = ['make_published']
 
-    def make_published(self, request, queryset):
+    def make_published(self, queryset):
         queryset.update(status='published')
 
     make_published.short_description = "标记为已发布"
@@ -87,10 +75,33 @@ class FoodAdmin(admin.ModelAdmin):
                 pass
         return 'No Image'
 
+# 书目管理后台
+class BookAdmin(admin.ModelAdmin):
+    list_display = ('book_id', 'book_type', 'display_base64_image', 'book_copy_writing', 'book_heading')
 
+    @staticmethod
+    def display_base64_image(obj):
+        # 获取与当前 Food 对象关联的图片 ID
+        image_id = obj.book_image_id
+        # 如果有图片 ID，则查询对应的 Image 记录
+        if image_id:
+            try:
+                image = Image.objects.get(image_id=image_id)
+                base64_data = image.image_data
+                # 如果有数据，在 HTML 中显示
+                if base64_data:
+                    # 添加标签，将 Base64 信息数据渲染为 img 图片类型
+                    image_html = format_html('<img src="{}" width="50px" height="auto"/>', base64_data)
+                    return mark_safe(image_html)
+            except Image.DoesNotExist:
+                pass
+        return 'No Image'
+
+
+# 管理员页面注册表
 admin.site.register(Activity)
 admin.site.register(Information, InformationAdmin)
-admin.site.register(Book)
+admin.site.register(Book, BookAdmin)
 admin.site.register(ShareLoop, ShareLoopAdmin)
 admin.site.register(User)
 admin.site.register(EmotionRecord)

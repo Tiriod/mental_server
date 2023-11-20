@@ -14,36 +14,43 @@ from .serializers import (
 from rest_framework.decorators import api_view
 
 
+# 活动表单信息
 class ActivityListView(generics.ListAPIView):
     queryset = Activity.objects.all()
     serializer_class = ActivitySerializer
 
 
+# AI资讯表单信息
 class InformationListView(generics.ListAPIView):
     queryset = Information.objects.all()
     serializer_class = InformationSerializer
 
 
+# 书目表单信息
 class BookListView(generics.ListAPIView):
     queryset = Book.objects.all()
     serializer_class = BookSerializer
 
 
+# 分享圈表单信息
 class ShareLoopListView(generics.ListAPIView):
     queryset = ShareLoop.objects.all()
     serializer_class = ShareLoopSerializer
 
 
+# 用户表单信息
 class UserListView(generics.ListAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer
 
 
+# 心情记录表单信息
 class EmotionRecordListView(generics.ListAPIView):
     queryset = EmotionRecord.objects.all()
     serializer_class = EmotionRecordSerializer
 
 
+# 食品表单信息
 class FoodListView(generics.ListAPIView):
     queryset = Food.objects.all()
     serializer_class = FoodSerializer
@@ -94,4 +101,3 @@ def shareLoop_upload(request):
         serializer.save()
 
     return JsonResponse(response_data, status=status.HTTP_200_OK)
-
