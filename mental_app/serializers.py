@@ -1,5 +1,6 @@
 from rest_framework import serializers
-from .models import Activity, Information, Book, ShareLoop, User, EmotionRecord, Food, Image, Emotion, Meditation, Audio, Action
+from .models import Activity, Information, Book, ShareLoop, User, EmotionRecord, Food, Image, Emotion, Meditation, \
+    Audio, Action
 
 
 class ActivitySerializer(serializers.ModelSerializer):
@@ -21,6 +22,9 @@ class BookSerializer(serializers.ModelSerializer):
 
 
 class ShareLoopSerializer(serializers.ModelSerializer):
+    # 将image_list解析
+    image_list_id = serializers.ListField(child=serializers.CharField())
+
     class Meta:
         model = ShareLoop
         fields = '__all__'

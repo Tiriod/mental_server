@@ -1,103 +1,169 @@
-from rest_framework.response import Response
-from rest_framework import generics, status
+import base64
+import json
+import time
+
 from django.http import JsonResponse
-from .models import Activity, Information, Book, ShareLoop, User, EmotionRecord, Food
-from .serializers import (
-    ActivitySerializer,
-    InformationSerializer,
-    BookSerializer,
-    ShareLoopSerializer,
-    UserSerializer,
-    EmotionRecordSerializer,
-    FoodSerializer,
-)
-from rest_framework.decorators import api_view
+from django.views.decorators.csrf import csrf_exempt
+from rest_framework import generics
+from rest_framework.response import Response
+from rest_framework import status
+
+import Utils.DateUtil
+from .models import Activity, Information, Book, ShareLoop, User, EmotionRecord, Food, Image, Meditation
+from .serializers import (ActivitySerializer, InformationSerializer, BookSerializer, ShareLoopSerializer,
+                          UserSerializer, EmotionRecordSerializer, FoodSerializer, ImageSerializer,
+                          MeditationSerializer)
 
 
-# 活动表单信息
 class ActivityListView(generics.ListAPIView):
+    """活动表单信息"""
     queryset = Activity.objects.all()
     serializer_class = ActivitySerializer
 
 
-# AI资讯表单信息
 class InformationListView(generics.ListAPIView):
+    """AI资讯表单信息"""
     queryset = Information.objects.all()
     serializer_class = InformationSerializer
 
 
-# 书目表单信息
 class BookListView(generics.ListAPIView):
+    """书目表单信息"""
     queryset = Book.objects.all()
     serializer_class = BookSerializer
 
 
-# 分享圈表单信息
-class ShareLoopListView(generics.ListAPIView):
+class ShareLoopListView(generics.ListCreateAPIView):
+    """用户分享圈信息"""
     queryset = ShareLoop.objects.all()
     serializer_class = ShareLoopSerializer
 
 
-# 用户表单信息
+@csrf_exempt
+def shareloops_upload(request):
+    if request.method == 'POST':
+        # 用户名称
+        username = request.POST.get('username')
+        # 用户心情
+        user_emotion = request.POST.get('user_emotion')
+        # 文案信息
+        shareloop_copy_writing = request.POST.get('shareloop_copy_writing')
+        # 提取图像数据列表
+        uploaded_images = request.FILES.getlist('image_list')
+        # 添加时间
+        release_time = request.POST.get('release_time')
+        # 保存每个图像数据到 Image 表，并构建 image_id 列表
+        image_id_list = []
+        for uploaded_image in uploaded_images:
+            image_id_list.append(image_storage(uploaded_image))
+            time.sleep(1)
+        # 创建返回的数据库表单
+        # 创建 ShareLoop 记录
+        ShareLoop.objects.create(
+            username=username,
+            user_emotion=user_emotion,
+            shareloop_copy_writing=shareloop_copy_writing,
+            image_id_list=json.dumps(image_id_list),  # 将图像ID列表转为JSON字符串
+            release_time=release_time
+        )
+        # 在这里添加其他数据处理逻辑，然后构建要返回的JSON数据
+        response_data = {
+            'status': 'success',
+            'message': 'Data received successfully',
+            'username': username,
+            'user_emotion': user_emotion,
+            'shareloop_copy_writing': shareloop_copy_writing,
+            'image_id_list': image_id_list,
+            'release_time': release_time
+            # 在这里添加其他数据字段
+        }
+        return JsonResponse(response_data)
+    return JsonResponse({'status': 'error！', 'message': 'Hi！Guys, the request method is wrong, it is POST, not GET!'})
+
+
 class UserListView(generics.ListAPIView):
+    """用户表单信息"""
     queryset = User.objects.all()
     serializer_class = UserSerializer
 
 
-# 心情记录表单信息
 class EmotionRecordListView(generics.ListAPIView):
+    """心情记录表单信息"""
     queryset = EmotionRecord.objects.all()
     serializer_class = EmotionRecordSerializer
 
 
-# 食品表单信息
 class FoodListView(generics.ListAPIView):
+    """食品表单信息"""
     queryset = Food.objects.all()
     serializer_class = FoodSerializer
 
 
-@api_view(["POST"])
-def api_test(request):
-    received_data = request.query_params.get('test_text')
-
-    # 构造要返回的 JSON 数据
-    response_data = {
-        "status": "success",
-        "message": "Data received successfully",
-        "test_text": received_data
-    }
-    return JsonResponse(response_data, status=status.HTTP_200_OK)
+class ImageListView(generics.ListAPIView):
+    """图像信息表"""
+    queryset = Image.objects.all()
+    serializer_class = ImageSerializer
 
 
-@api_view(["POST"])
-def shareLoop_upload(request):
-    # 发布用户的id信息
-    user_id = request.data.get('user_id')
-    # 用户心情信息
-    user_emotion = request.data.get('user_emotion')
-    # 用户分享圈文案信息
-    shareLoop_copy_writing = request.data.get('shareLoop_copy_writing')
-    # 用户图像列表
-    image_list = request.FILES.get('image_list')
-    # 上传时间
-    release_time = request.data.get('release_time')
+# 图像上传方法: 此处的image_data应当为base64的数据格式
+def add_image(image_data, image_format='jpeg'):
+    # 获取特征性 image_id
+    image_id = Utils.DateUtil.get_image_id()
+    # 在 Image 数据库表单内创建一条新的 image_data 数据信息
+    base64_data = f'data:image/{image_format};base64,{image_data}'
+    Image.objects.create(image_id=image_id, image_data=base64_data)
+    # 返回特征性的 image_id
+    return image_id
 
-    # 构造要返回的 JSON 数据
-    response_data = {
-        "status": "success",
-        "message": "Data received successfully",
-        "data": {
-            "user_id": user_id,
-            "user_emotion": user_emotion,
-            "shareLoop_copy_writing": shareLoop_copy_writing,
-            "image_list": image_list,
-            "release_time": release_time
+
+# 图像上传(文件上传)
+@csrf_exempt
+def image_upload(request):
+    if request.method == 'POST':
+        # 获取上传的图片
+        uploaded_image = request.FILES.get('image_data')
+        image_format = uploaded_image.name.split('.')[-1].lower()
+        # 添加图片到 Image 表并获取 image_id
+        base64_data = base64.b64encode(uploaded_image.read()).decode('utf-8')
+        image_id = add_image(base64_data, image_format)
+
+        # 构造返回的 JSON 数据
+        response_data = {
+            'status': 'success',
+            'message': 'Data received successfully',
+            'image_id': image_id,
         }
-    }
+        return JsonResponse(response_data)
+    return JsonResponse({'status': 'error！', 'message': 'Hi！Guys, the request method is wrong, it is POST, not GET!'})
 
-    # 在数据库中创建 ShareLoop 实例
-    serializer = ShareLoopSerializer(data=response_data['data'])
-    if serializer.is_valid():
-        serializer.save()
 
-    return JsonResponse(response_data, status=status.HTTP_200_OK)
+def image_storage(image):
+    # 将Image数据转为base64编码形式
+    data = base64.b64encode(image.read()).decode('utf-8')
+    # 获取image的图片类型
+    image_format = image.name.split('.')[-1].lower()
+    # 获取存储image后得到的id信息
+    image_id = add_image(data, image_format)
+    return image_id
+
+
+class MeditationListView(generics.ListAPIView):
+    """冥想信息表"""
+    queryset = Meditation.objects.all()
+    serializer_class = MeditationSerializer
+
+    def get(self, request, *args, **kwargs):
+        # 获取冥想信息
+        queryset = self.filter_queryset(self.get_queryset())
+
+        # 将播放量加一
+        meditation_id = self.kwargs.get('meditation_id')  # 这里假设 URL 中包含了冥想的主键（meditation_id）
+        try:
+            meditation = Meditation.objects.get(meditation_id=meditation_id)
+            meditation.play += 1
+            meditation.save()
+        except Meditation.DoesNotExist:
+            return Response({'detail': 'Meditation not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)

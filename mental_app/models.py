@@ -30,10 +30,11 @@ class Book(models.Model):
 
 class ShareLoop(models.Model):
     """分享圈表单"""
-    user_id = models.AutoField(primary_key=True)  # 用户id
+    shareloop_id = models.AutoField(primary_key=True)  # 分享圈信息id
+    username = models.CharField(max_length=255)  # 分享圈发布用户信息
     user_emotion = models.CharField(max_length=255)  # 用户心情
-    shareLoop_copy_writing = models.TextField()  # 文本信息
-    image_list_id = models.CharField(max_length=100)  # 图片列表ID
+    shareloop_copy_writing = models.TextField()  # 文本信息
+    image_id_list = models.TextField()  # 图片列表ID
     release_time = models.DateTimeField()  # 发布时间
 
 
@@ -89,6 +90,7 @@ class Emotion(models.Model):
 class Meditation(models.Model):
     """冥想音频表单"""
     meditation_id = models.AutoField(primary_key=True)  # 冥想id
+    meditation_type = models.CharField(max_length=20)  # 冥想类型
     meditation_name = models.CharField(max_length=100)  # 冥想名称
     meditation_image_id = models.CharField(max_length=100)  # 图片地址
     play = models.IntegerField()  # 播放量
