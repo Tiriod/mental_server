@@ -1,6 +1,7 @@
 import base64
 import json
 import time
+from urllib.parse import unquote
 
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -9,10 +10,10 @@ from rest_framework.response import Response
 from rest_framework import status
 
 import Utils.DateUtil
-from .models import Activity, Information, Book, ShareLoop, User, EmotionRecord, Food, Image, Meditation
+from .models import Activity, Information, Book, ShareLoop, User, EmotionRecord, Food, Image, Meditation, Emotion
 from .serializers import (ActivitySerializer, InformationSerializer, BookSerializer, ShareLoopSerializer,
                           UserSerializer, EmotionRecordSerializer, FoodSerializer, ImageSerializer,
-                          MeditationSerializer)
+                          MeditationSerializer, EmotionSerializer)
 
 
 class ActivityListView(generics.ListAPIView):
@@ -153,17 +154,56 @@ class MeditationListView(generics.ListAPIView):
     serializer_class = MeditationSerializer
 
     def get(self, request, *args, **kwargs):
-        # 获取冥想信息
-        queryset = self.filter_queryset(self.get_queryset())
+        meditation_id = self.kwargs.get('meditation_id')
+        meditation_type = self.kwargs.get('meditation_type')
 
-        # 将播放量加一
-        meditation_id = self.kwargs.get('meditation_id')  # 这里假设 URL 中包含了冥想的主键（meditation_id）
-        try:
-            meditation = Meditation.objects.get(meditation_id=meditation_id)
-            meditation.play += 1
-            meditation.save()
-        except Meditation.DoesNotExist:
-            return Response({'detail': 'Meditation not found'}, status=status.HTTP_404_NOT_FOUND)
+        if meditation_id:
+            # 如果包含冥想的主键（meditation_id），将播放量加一
+            try:
+                meditation = Meditation.objects.get(meditation_id=meditation_id)
+                meditation.play += 1
+                meditation.save()
+                # 返回获取到的数据
+                serializer = MeditationSerializer(meditation)
+                return JsonResponse(serializer.data)
+            except Meditation.DoesNotExist:
+                return Response({'detail': 'Meditation not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        if meditation_type:
+            # 如果包含冥想的类型（meditation_type），返回符合条件的冥想信息
+            queryset = self.filter_queryset(self.get_queryset().filter(meditation_type__icontains=meditation_type))
+        else:
+            # 否则返回所有的冥想信息
+            queryset = self.filter_queryset(self.get_queryset())
 
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
+
+
+class EmotionListView(generics.ListAPIView):
+    """心情信息表"""
+    queryset = Emotion.objects.all()
+    serializer_class = EmotionSerializer
+
+    # get方法
+    def get(self, request, *args, **kwargs):
+        emotion_text = self.kwargs.get('emotion_text')
+        emotion_id = self.kwargs.get('emotion_id')
+        if emotion_text:
+            try:
+                # 通过emotion_text来获取对应的emotion内容
+                emotion = Emotion.objects.get(emotion_text=emotion_text)
+                serializer = EmotionSerializer(emotion)  # 使用你的序列化器
+                return JsonResponse({'result': serializer.data})
+            except Meditation.DoesNotExist:
+                return Response({'detail': 'Meditation not found'}, status=status.HTTP_404_NOT_FOUND)
+        if emotion_id:
+            try:
+                # 通过emotion_text来获取对应的emotion内容
+                emotion = Emotion.objects.get(emotion_id=emotion_id)
+                serializer = EmotionSerializer(emotion)  # 使用你的序列化器
+                return JsonResponse({'result': serializer.data})
+            except Meditation.DoesNotExist:
+                return Response({'detail': 'Meditation not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        return JsonResponse({'status': 'error！', 'message': 'Nothing'})

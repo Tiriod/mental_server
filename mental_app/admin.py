@@ -7,6 +7,24 @@ from .models import (Activity, Information, Book, ShareLoop, User, EmotionRecord
                      Audio, Action, )
 
 
+# admin页面显示图像方法
+
+def display_base64_image(image_id):
+    try:
+        image = Image.objects.get(image_id=image_id)
+        base64_data = image.image_data
+
+        if base64_data:
+            image_html = format_html(
+                '<img src="{}" style="width: 50px; height: auto; margin-right: 10px; border-radius: 5px;"/>',
+                base64_data)
+            return mark_safe(image_html)
+    except Image.DoesNotExist:
+        print(f"Image with image_id={image_id} not found.")
+
+    return 'No Image'
+
+
 # 用户分享圈管理功能
 class ShareLoopAdmin(admin.ModelAdmin):
     # 在列表中显示的字段: 用户名称, 用户心情, 发布时间
@@ -29,7 +47,7 @@ class ShareLoopAdmin(admin.ModelAdmin):
         except json.JSONDecodeError:
             print("Error decoding image_id_list JSON.")
             image_id_list = []
-
+        # HTML图像渲染内容
         images_html = []
         if image_id_list:
             for image_id in image_id_list:
@@ -39,7 +57,6 @@ class ShareLoopAdmin(admin.ModelAdmin):
                                                    '5px; border-radius: 5px;"/>', base64_data))
                 except Image.DoesNotExist:
                     print(f"Image with image_id={image_id} not found.")
-
             return mark_safe(''.join(images_html))
         else:
             return 'No Image'
@@ -53,20 +70,24 @@ class InformationAdmin(admin.ModelAdmin):
     # 词条数量
     list_per_page = 5
 
-    @staticmethod
-    def display_base64_image(obj):
-        # 获取图像 Base64 数据
-        image_id = obj.information_image_id
+    def display_base64_image(self, obj):
+        return display_base64_image(obj.information_image_id)
 
-        # 如果有数据，在HTML中显示
-        if image_id:
-            base64_data = Image.objects.get(image_id=image_id).image_data
-            # 添加标签，将Base64信息数据渲染为img图片类型
-            image_html = format_html('<img src="{}" width="200px" height="auto"/>', base64_data)
-            return mark_safe(image_html)
-        else:
-            # 否则显示样式为无图片的样式
-            return 'No Image'
+    display_base64_image.short_description = 'Decoded Image'
+
+
+# 食品表管理功能
+class FoodAdmin(admin.ModelAdmin):
+    list_display = ('id', 'type', 'food_name', 'food_image_id', 'display_base64_image', 'quantity', 'calories')
+    # 直接编辑type
+    list_editable = ('type',)  # 允许在列表页面直接编辑 type
+    # 词条数量
+    list_per_page = 20
+    # 词条搜索内容
+    search_fields = ('type',)
+
+    def display_base64_image(self, obj):
+        return display_base64_image(obj.food_image_id)
 
     display_base64_image.short_description = 'Decoded Image'
 
@@ -76,50 +97,14 @@ class ImageAdmin(admin.ModelAdmin):
     # 显示列
     list_display = ('image_id', 'display_base64_image')
     # 词条数量
-    list_per_page = 10
+    list_per_page = 20
     # 搜索内容
     search_fields = ('image_id',)
 
     def display_base64_image(self, obj):
-        # 获取图像 Base64 数据
-        base64_data = obj.image_data
-        # 如果有数据，在HTML中显示
-        if base64_data:
-            # 添加标签，将Base64信息数据渲染为img图片类型
-            image_html = format_html('<img src="{}" width="200px" height="auto"/>', base64_data)
-            return mark_safe(image_html)
-        else:
-            # 否则显示样式为无图片的样式
-            return 'No Image'
+        return display_base64_image(obj.image_id)
 
     display_base64_image.short_description = 'Decoded Image'
-
-
-# 食品表管理功能
-class FoodAdmin(admin.ModelAdmin):
-    list_display = ('id', 'type', 'food_name', 'food_image_id', 'display_base64_image', 'quantity', 'calories')
-    # 直接编辑food_image_id
-    list_editable = ('food_image_id',)  # 允许在列表页面直接编辑 food_image_id
-    # 词条数量
-    list_per_page = 10
-
-    @staticmethod
-    def display_base64_image(obj):
-        # 获取与当前 Food 对象关联的图片 ID
-        image_id = obj.food_image_id
-        # 如果有图片 ID，则查询对应的 Image 记录
-        if image_id:
-            try:
-                image = Image.objects.get(image_id=image_id)
-                base64_data = image.image_data
-                # 如果有数据，在 HTML 中显示
-                if base64_data:
-                    # 添加标签，将 Base64 信息数据渲染为 img 图片类型
-                    image_html = format_html('<img src="{}" width="50px" height="auto"/>', base64_data)
-                    return mark_safe(image_html)
-            except Image.DoesNotExist:
-                pass
-        return 'No Image'
 
 
 # 书目管理后台
@@ -128,22 +113,10 @@ class BookAdmin(admin.ModelAdmin):
     # 词条数量
     list_per_page = 10
 
-    @staticmethod
-    def display_base64_image(obj):
-        # 获取与当前 Food 对象关联的图片 ID
-        image_id = obj.book_image_id
-        # 如果有图片 ID，则查询对应的 Image 记录
-        if image_id:
-            try:
-                image = Image.objects.get(image_id=image_id)
-                # 如果有数据，在 HTML 中显示
-                if image.image_data:
-                    # 添加标签，将 Base64 信息数据渲染为 img 图片类型
-                    image_html = format_html('<img src="{}" width="50px" height="auto"/>', image.image_data)
-                    return mark_safe(image_html)
-            except Image.DoesNotExist:
-                pass
-        return 'No Image'
+    def display_base64_image(self, obj):
+        return display_base64_image(obj.book_image_id)
+
+    display_base64_image.short_description = 'Decoded Image'
 
 
 # 用户管理后台
@@ -154,53 +127,44 @@ class UserAdmin(admin.ModelAdmin):
     # 词条数量
     list_per_page = 10
 
-    @staticmethod
-    def display_base64_image(obj):
-        # 获取与当前 User 对象关联的图片 ID
-        image_id = obj.user_avatar_id
-        # 如果有图片 ID，则查询对应的 Image 记录
-        if image_id:
-            try:
-                image = Image.objects.get(image_id=image_id)
-                base64_data = image.image_data
-                # 如果有数据，在 HTML 中显示
-                if base64_data:
-                    # 添加标签，将 Base64 信息数据渲染为 img 图片类型
-                    image_html = format_html('<img src="{}" width="100px" height="auto"/>', base64_data)
-                    return mark_safe(image_html)
-            except Image.DoesNotExist:
-                pass
-        return 'No Image'
+    def display_base64_image(self, obj):
+        return display_base64_image(obj.user_avatar_id)
+
+    display_base64_image.short_description = 'Decoded Image'
+
+
+class EmotionAdmin(admin.ModelAdmin):
+    list_display = ('emotion_id', 'emotion_image_id', 'display_base64_image', 'emotion_text')
+
+    def display_base64_image(self, obj):
+        return display_base64_image(obj.emotion_image_id)
+
+    display_base64_image.short_description = 'Decoded Image'
 
 
 class MeditationAdmin(admin.ModelAdmin):
     list_display = ('meditation_id', 'meditation_type', 'meditation_name', 'display_base64_image', 'play', 'audio_id')
 
-    @staticmethod
-    def display_base64_image(obj):
-        image_id = obj.meditation_image_id
-        if image_id:
-            try:
-                image = Image.objects.get(image_id=image_id)
-                base64_data = image.image_data
-                # 如果有数据，在 HTML 中显示
-                if base64_data:
-                    # 添加标签，将 Base64 信息数据渲染为 img 图片类型
-                    image_html = format_html('<img src="{}" style="width: 100px; height: auto; margin: '
-                                             '5px; border-radius: 5px;" />', base64_data)
-                    return mark_safe(image_html)
-            except Image.DoesNotExist:
-                pass
-        return 'No Image'
+    def display_base64_image(self, obj):
+        return display_base64_image(obj.meditation_image_id)
 
-    display_base64_image.short_description = 'Meditation Cover'
+    display_base64_image.short_description = 'Decoded Image'
 
 
 class AudioAdmin(admin.ModelAdmin):
     list_display = ('audio_id', 'audio_file')
 
 
-# 管理员页面注册表
+class ActionAdmin(admin.ModelAdmin):
+    list_display = ('action_id', 'action_image_id', 'display_base64_image', 'action_text',)
+
+    def display_base64_image(self, obj):
+        return display_base64_image(obj.action_image_id)
+
+    display_base64_image.short_description = 'Decoded Image'
+
+
+# 管理员页面装饰器
 admin.site.register(Activity)
 admin.site.register(Information, InformationAdmin)
 admin.site.register(Book, BookAdmin)
@@ -209,7 +173,7 @@ admin.site.register(User, UserAdmin)
 admin.site.register(EmotionRecord)
 admin.site.register(Food, FoodAdmin)
 admin.site.register(Image, ImageAdmin)
-admin.site.register(Emotion)
+admin.site.register(Emotion, EmotionAdmin)
 admin.site.register(Meditation, MeditationAdmin)
 admin.site.register(Audio, AudioAdmin)
-admin.site.register(Action)
+admin.site.register(Action, ActionAdmin)

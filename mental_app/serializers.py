@@ -22,8 +22,6 @@ class BookSerializer(serializers.ModelSerializer):
 
 
 class ShareLoopSerializer(serializers.ModelSerializer):
-    # 将image_list解析
-    image_list_id = serializers.ListField(child=serializers.CharField())
 
     class Meta:
         model = ShareLoop
