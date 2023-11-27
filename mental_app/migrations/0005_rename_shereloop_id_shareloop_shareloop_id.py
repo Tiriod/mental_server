@@ -13,6 +13,6 @@ class Migration(migrations.Migration):
         migrations.RenameField(
             model_name='shareloop',
             old_name='shereloop_id',
-            new_name='shareloop_id',
+            new_name='shareLoop_id',
         ),
     ]

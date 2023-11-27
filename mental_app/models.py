@@ -30,10 +30,10 @@ class Book(models.Model):
 
 class ShareLoop(models.Model):
     """分享圈表单"""
-    shareloop_id = models.AutoField(primary_key=True)  # 分享圈信息id
+    shareLoop_id = models.AutoField(primary_key=True)  # 分享圈信息id
     username = models.CharField(max_length=255)  # 分享圈发布用户信息
     user_emotion = models.CharField(max_length=255)  # 用户心情
-    shareloop_copy_writing = models.TextField()  # 文本信息
+    shareLoop_copy_writing = models.TextField()  # 文本信息
     image_id_list = models.TextField()  # 图片列表ID
     release_time = models.DateTimeField()  # 发布时间
 
@@ -59,9 +59,9 @@ class EmotionRecord(models.Model):
     """情绪记录表"""
     record_id = models.AutoField(primary_key=True)  # 记录id
     user_id = models.ForeignKey(User, on_delete=models.CASCADE)  # 用户id
-    emotion_text = models.TextField()  # 用户心情
+    emotion_text = models.TextField(max_length=2)  # 用户心情
     release_time = models.DateTimeField()  # 记录时间
-    action_list = models.ManyToManyField(Action)  # 活动行为列表
+    action_list = models.TextField(max_length=100)  # 活动行为列表
 
 
 class Food(models.Model):
@@ -101,3 +101,13 @@ class Audio(models.Model):
     """音频表"""
     audio_id = models.CharField(max_length=100, primary_key=True)  # 音频特征id
     audio_file = models.FileField(upload_to='audio/')
+
+
+class TestModule(models.Model):
+    """测一测模块内容"""
+    test_id = models.AutoField(primary_key=True)
+    test_image_id = models.CharField(max_length=100)  # 图片地址
+    test_question = models.CharField(max_length=100)  # 测试问题
+    test_choiceA = models.CharField(max_length=50)  # 选项A
+    test_choiceB = models.CharField(max_length=50)  # 选项B
+    test_choiceC = models.CharField(max_length=50)  # 选项C

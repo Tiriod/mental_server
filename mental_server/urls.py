@@ -3,6 +3,7 @@ from django.urls import path
 from mental_app import views
 
 app_name = 'mental_app'
+
 urlpatterns = [
     # 活动 API
     path('api/v1/activities/', views.ActivityListView.as_view(), name='api-activity-list'),
@@ -11,16 +12,21 @@ urlpatterns = [
     # 书目 API
     path('api/v1/books/', views.BookListView.as_view(), name='api-book-list'),
     # 分享圈 API
-    path('api/v1/shareloops/', views.ShareLoopListView.as_view(), name='api-shareloop-list'),
-    path('api/v1/shareloops/upload/', views.shareloops_upload, name="api-shareloop-upload"),
+    path('api/v1/shareloops/', views.ShareLoopListView.as_view(), name='api-shareLoop-list'),
+    path('api/v1/shareloops/upload/', views.shareLoops_upload, name='api-shareLoop-upload'),
     # 用户 API
     path('api/v1/users/', views.UserListView.as_view(), name='api-user-list'),
     # 心绪记录 API
-    path('api/v1/emotionrecords/', views.EmotionRecordListView.as_view(), name='api-emotionrecord-list'),
+    path('api/v1/emotionrecords/', views.EmotionRecordListView.as_view(), name='api-emotionRecord-list'),
+    path('api/v1/emotionrecords/upload/', views.emotionRecord_upload, name='api-emotionRecords-upload'),
+    path('api/v1/emotionrecords/<int:user_id>/', views.emotionRecord_user, name='api-emotionRecords-user'),
     # 食物地址 API
     path('api/v1/foods/', views.FoodListView.as_view(), name='api-food-list'),
+    # 图像查询地址
+    path('api/v1/images/', views.ImageListView.as_view(), name='api-image-get'),
+    path('api/v1/images/<str:image_id>/', views.get_image_base64, name='get-image-base64'),
     # 图像上传 API
-    path('api/v1/image/upload/', views.image_upload, name="api-image-upload"),
+    path('api/v1/images/upload/', views.image_upload, name="api-image-upload"),
     # 冥想音频 API
     path('api/v1/meditations/', views.MeditationListView.as_view(), name="api-meditations-list"),
     path('api/v1/meditations/meditation_id/<int:meditation_id>/', views.MeditationListView.as_view(),
@@ -31,6 +37,9 @@ urlpatterns = [
     path('api/v1/emotion/emotion_text/<str:emotion_text>/', views.EmotionListView.as_view(),
          name='api-emotions-list-text'),
     path('api/v1/emotion/emotion_id/<int:emotion_id>/', views.EmotionListView.as_view(), name='api-emotions-list-id'),
+    # “测一测”内容 API
+    path('api/v1/testmodules/', views.TestModuleListView.as_view(), name='api-'),
     # 管理员 API
     path('admin/', admin.site.urls, name='admin-site'),
+
 ]

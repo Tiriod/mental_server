@@ -1,6 +1,8 @@
+import json
+
 from rest_framework import serializers
 from .models import Activity, Information, Book, ShareLoop, User, EmotionRecord, Food, Image, Emotion, Meditation, \
-    Audio, Action
+    Audio, Action, TestModule
 
 
 class ActivitySerializer(serializers.ModelSerializer):
@@ -22,7 +24,6 @@ class BookSerializer(serializers.ModelSerializer):
 
 
 class ShareLoopSerializer(serializers.ModelSerializer):
-
     class Meta:
         model = ShareLoop
         fields = '__all__'
@@ -35,11 +36,23 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class EmotionRecordSerializer(serializers.ModelSerializer):
-    action_list = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
-
     class Meta:
         model = EmotionRecord
         fields = '__all__'
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+
+        # 将 action_list 由字符串转换为列表
+        action_list_str = representation.get('action_list', '[]')
+        try:
+            action_list = json.loads(action_list_str)
+            representation['action_list'] = action_list
+        except json.JSONDecodeError:
+            # 如果解析失败，保持原始的字符串形式
+            pass
+
+        return representation
 
 
 class FoodSerializer(serializers.ModelSerializer):
@@ -76,3 +89,10 @@ class ActionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Action
         fields = '__all__'
+
+
+class TestModuleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TestModule
+        fields = 'all'
+

@@ -16,7 +16,7 @@ def display_base64_image(image_id):
 
         if base64_data:
             image_html = format_html(
-                '<img src="{}" style="width: 50px; height: auto; margin-right: 10px; border-radius: 5px;"/>',
+                '<img src="{}" style="width: auto; height: 50px; margin-right: 10px; border-radius: 5px;"/>',
                 base64_data)
             return mark_safe(image_html)
     except Image.DoesNotExist:
@@ -28,7 +28,7 @@ def display_base64_image(image_id):
 # 用户分享圈管理功能
 class ShareLoopAdmin(admin.ModelAdmin):
     # 在列表中显示的字段: 用户名称, 用户心情, 发布时间
-    list_display = ('shareloop_id', 'username', 'user_emotion', 'display_base64_image_list', 'release_time')
+    list_display = ('shareLoop_id', 'username', 'user_emotion', 'display_base64_image_list', 'release_time')
     # 启用搜索功能，搜索'user_emotion'字段
     search_fields = ('user_emotion',)
     # 启用过滤器，按照发布时间进行过滤
@@ -164,16 +164,21 @@ class ActionAdmin(admin.ModelAdmin):
     display_base64_image.short_description = 'Decoded Image'
 
 
+# 心绪记录表单
+class EmotionRecordAdmin(admin.ModelAdmin):
+    list_display = ('record_id', 'user_id', 'emotion_text', 'action_list', 'release_time')
+
+
 # 管理员页面装饰器
 admin.site.register(Activity)
 admin.site.register(Information, InformationAdmin)
 admin.site.register(Book, BookAdmin)
 admin.site.register(ShareLoop, ShareLoopAdmin)
 admin.site.register(User, UserAdmin)
-admin.site.register(EmotionRecord)
 admin.site.register(Food, FoodAdmin)
 admin.site.register(Image, ImageAdmin)
 admin.site.register(Emotion, EmotionAdmin)
 admin.site.register(Meditation, MeditationAdmin)
 admin.site.register(Audio, AudioAdmin)
 admin.site.register(Action, ActionAdmin)
+admin.site.register(EmotionRecord, EmotionRecordAdmin)
