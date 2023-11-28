@@ -1,5 +1,4 @@
 absl-py==1.4.0
-alembic==1.9.4
 altgraph==0.17.3
 amqp==2.6.1
 anyio==3.6.2
