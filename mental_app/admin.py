@@ -4,7 +4,7 @@ from django.contrib import admin
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 from .models import (Activity, Information, Book, ShareLoop, User, EmotionRecord, Food, Image, Emotion, Meditation,
-                     Audio, Action, )
+                     Audio, Action, TestModule)
 
 
 # admin页面显示图像方法
@@ -169,6 +169,15 @@ class EmotionRecordAdmin(admin.ModelAdmin):
     list_display = ('record_id', 'user_id', 'emotion_text', 'action_list', 'release_time')
 
 
+class TestModuleAdmin(admin.ModelAdmin):
+    list_display = ('test_id', 'display_base64_image', 'test_question', 'test_choiceA', 'test_choiceB', 'test_choiceC')
+
+    def display_base64_image(self, obj):
+        return display_base64_image(obj.test_image_id)
+
+    display_base64_image.short_description = 'Decoded Image'
+
+
 # 管理员页面装饰器
 admin.site.register(Activity)
 admin.site.register(Information, InformationAdmin)
@@ -182,3 +191,4 @@ admin.site.register(Meditation, MeditationAdmin)
 admin.site.register(Audio, AudioAdmin)
 admin.site.register(Action, ActionAdmin)
 admin.site.register(EmotionRecord, EmotionRecordAdmin)
+admin.site.register(TestModule, TestModuleAdmin)

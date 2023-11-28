@@ -94,5 +94,4 @@ class ActionSerializer(serializers.ModelSerializer):
 class TestModuleSerializer(serializers.ModelSerializer):
     class Meta:
         model = TestModule
-        fields = 'all'
-
+        fields = '__all__'

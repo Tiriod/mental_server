@@ -1,13 +1,19 @@
 import base64
+import datetime
 import json
+import random
 import time
+
+import jieba
+import pandas
 from django.shortcuts import get_object_or_404
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework import generics
-from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import linear_kernel
 
 import Utils.DateUtil
 from .models import Activity, Information, Book, ShareLoop, User, EmotionRecord, Food, Image, Meditation, Emotion, \
@@ -42,7 +48,7 @@ class ShareLoopListView(generics.ListCreateAPIView):
 
 
 # 心情分享圈POST上传
-@api_view(['POST'])
+@csrf_exempt
 def shareLoops_upload(request):
     # 用户名称
     username = request.POST.get('username')
@@ -89,43 +95,45 @@ class UserListView(generics.ListAPIView):
 
 
 # 上传EmotionRecord的信息
-@api_view(['POST'])
+@csrf_exempt
 def emotionRecord_upload(request):
-    user_id = request.POST.get('user_id')
-    emotion_text = request.POST.get('emotion_text')
-    release_time = request.POST.get('release_time')
-    action_list_str = request.POST.get('action_list')
+    if request.method == 'POST':
+        user_id = request.POST.get('user_id')
+        emotion_text = request.POST.get('emotion_text')
+        release_time = request.POST.get('release_time')
+        action_list_str = request.POST.get('action_list')
 
-    # 获取对应用户的实例，如果找不到返回404响应
-    user_instance = get_object_or_404(User, user_id=user_id)
+        # 获取对应用户的实例，如果找不到返回404响应
+        user_instance = get_object_or_404(User, user_id=user_id)
 
-    # 将 action_list_str 转换为 Python 列表
-    try:
-        action_list = json.loads(action_list_str)
-    except json.JSONDecodeError:
-        return JsonResponse({'status': 'error', 'message': 'Invalid JSON format for action_list'})
+        # 将 action_list_str 转换为 Python 列表
+        try:
+            action_list = json.loads(action_list_str)
+        except json.JSONDecodeError:
+            return JsonResponse({'status': 'error', 'message': 'Invalid JSON format for action_list'})
 
-    # 创建新的心绪记录表
-    emotion_record = EmotionRecord.objects.create(
-        user_id=user_instance,
-        emotion_text=emotion_text,
-        release_time=release_time,
-        action_list=action_list,
-    )
-    # 在这里添加其他数据处理逻辑，然后构建要返回的JSON数据
-    response_data = {
-        'status': 'success',
-        'message': 'Data received successfully',
-        'user_id': str(emotion_record.user_id.pk),  # 使用.pk获取用户主键
-        'emotion_text': emotion_record.emotion_text,
-        'release_time': emotion_record.release_time,
-        'action_list': emotion_record.action_list,
-    }
-    return JsonResponse(response_data)
+        # 创建新的心绪记录表
+        emotion_record = EmotionRecord.objects.create(
+            user_id=user_instance,
+            emotion_text=emotion_text,
+            release_time=release_time,
+            action_list=action_list,
+        )
+        # 在这里添加其他数据处理逻辑，然后构建要返回的JSON数据
+        response_data = {
+            'status': 'success',
+            'message': 'Data received successfully',
+            'user_id': str(emotion_record.user_id.pk),  # 使用.pk获取用户主键
+            'emotion_text': emotion_record.emotion_text,
+            'release_time': emotion_record.release_time,
+            'action_list': emotion_record.action_list,
+        }
+        return JsonResponse(response_data)
+    return JsonResponse({'status': 'error', 'message': 'Hi! Guys, the request method is wrong, it is GET, not POST!'})
 
 
 # 查询单个用户的心情信息数据
-@api_view(['GET'])
+@csrf_exempt
 def emotionRecord_user(request, user_id):
     USER = get_object_or_404(User, user_id=user_id)
     emotionRecords = EmotionRecord.objects.filter(user_id=USER)
@@ -149,13 +157,101 @@ class FoodListView(generics.ListAPIView):
     serializer_class = FoodSerializer
 
 
+@csrf_exempt
+def food_Details(request, food_name):
+    # 获取对应食品的实例，如果找不到返回404响应
+    food = get_object_or_404(Food, food_name=food_name)
+
+    serializer = FoodSerializer(food)
+
+    # 在这里添加其他数据处理逻辑，然后构建要返回的JSON数据
+    response_data = {
+        'status': 'success',
+        'message': 'Food details retrieved successfully',
+        'food_details': serializer.data,
+    }
+    return JsonResponse(response_data)
+
+
+# 智能获取食物信息
+@csrf_exempt
+def food_Statistics(request):
+    foods = Food.objects.all()
+    serializer = FoodSerializer(foods, many=True)
+    # 从序列化结果中提取所需的信息，这里假设 Food 模型有相应的字段，你可以根据实际情况修改
+    food_ids = [food['id'] for food in serializer.data]
+    food_types = [food['type'] for food in serializer.data]
+    food_imageIDList = [food['food_image_id'] for food in serializer.data]
+    food_name = [food['food_name'] for food in serializer.data]
+    calories = [food['calories'] for food in serializer.data]
+    # 构建返回的字典
+    response_data = {
+        'status': 'success',
+        'id': food_ids,
+        'type': food_types,
+        'food_imageIDList': food_imageIDList,
+        'food_name': food_name,
+        'calories': calories,
+    }
+    if request.method == 'GET':
+        return JsonResponse(response_data)  # 返回 JSON 响应
+    elif request.method == 'POST':
+        return response_data  # 直接返回字典
+
+
+# 食物推荐
+@csrf_exempt
+def food_Recommendations(request):
+    food_data_response = food_Statistics(request)
+    food_data = json.loads(food_data_response.content)
+
+    # 将 'calories' 列表中的每个元素转换为字符串
+    food_data['calories'] = [str(calorie) for calorie in food_data['calories']]
+
+    # 将类型和卡路里拼接为一个文本
+    food_data['features'] = [' '.join([type_, str(calorie)]) for type_, calorie in
+                             zip(food_data['type'], food_data['calories'])]
+
+    # 中文分词
+    food_data['features'] = [' '.join(jieba.cut(x)) for x in food_data['features']]
+
+    # 使用 TF-IDF 向量化食物的特征
+    tfidf_vectorizer = TfidfVectorizer()
+    tfidf_matrix = tfidf_vectorizer.fit_transform(food_data['features'])
+
+    # 计算余弦相似度
+    cosine_sim = linear_kernel(tfidf_matrix, tfidf_matrix)
+
+    # 获取食物名称到索引的映射
+    def get_recommendations(food_name, top_n=4):
+        idx = pandas.Series(range(len(food_data['food_name'])), index=food_data['food_name']).drop_duplicates()[
+            food_name]
+        sim_scores = list(enumerate(cosine_sim[idx]))
+        sim_scores = sorted(sim_scores, key=lambda x: x[1], reverse=True)
+        sim_scores = sim_scores[1: top_n + 1]  # 取前4个相似的食物
+        food_indices = [i[0] for i in sim_scores]
+        return [food_data['food_name'][i] for i in food_indices]
+
+    Date = datetime.datetime.now()
+    DAY = Date.day
+    # 示例：获取与某个食物相似的推荐
+    response_data = {
+        'status': 'success',
+        'message': 'Image data retrieved successfully',
+        'breakfast': get_recommendations(food_data['food_name'][DAY - 7], 4),
+        'lunch': get_recommendations(food_data['food_name'][DAY], 6),
+        'dinner': get_recommendations(food_data['food_name'][DAY + 7], 5),
+    }
+    return JsonResponse(response_data)
+
+
 class ImageListView(generics.ListAPIView):
     """图像信息表"""
     queryset = Image.objects.all()
     serializer_class = ImageSerializer
 
 
-@api_view(['GET'])
+@csrf_exempt
 def get_image_base64(request, image_id):
     # 获取对应图片的实例，如果找不到返回404响应
     image_instance = get_object_or_404(Image, image_id=image_id)
@@ -185,22 +281,24 @@ def add_image(image_data, image_format='jpeg'):
 
 
 # 图像上传(文件上传)
-@api_view(['POST'])
+@csrf_exempt
 def image_upload(request):
-    # 获取上传的图片
-    uploaded_image = request.FILES.get('image_data')
-    image_format = uploaded_image.name.split('.')[-1].lower()
-    # 添加图片到 Image 表并获取 image_id
-    base64_data = base64.b64encode(uploaded_image.read()).decode('utf-8')
-    image_id = add_image(base64_data, image_format)
+    if request.method == 'POST':
+        # 获取上传的图片
+        uploaded_image = request.FILES.get('image_data')
+        image_format = uploaded_image.name.split('.')[-1].lower()
+        # 添加图片到 Image 表并获取 image_id
+        base64_data = base64.b64encode(uploaded_image.read()).decode('utf-8')
+        image_id = add_image(base64_data, image_format)
 
-    # 构造返回的 JSON 数据
-    response_data = {
-        'status': 'success',
-        'message': 'Data received successfully',
-        'image_id': image_id,
-    }
-    return JsonResponse(response_data)
+        # 构造返回的 JSON 数据
+        response_data = {
+            'status': 'success',
+            'message': 'Data received successfully',
+            'image_id': image_id,
+        }
+        return JsonResponse(response_data)
+    return JsonResponse({'status': 'error', 'message': 'Hi! Guys, the request method is wrong, it is GET, not POST!'})
 
 
 def image_storage(image):
