@@ -111,3 +111,4 @@ class TestModule(models.Model):
     test_choiceA = models.CharField(max_length=50)  # 选项A
     test_choiceB = models.CharField(max_length=50)  # 选项B
     test_choiceC = models.CharField(max_length=50)  # 选项C
+

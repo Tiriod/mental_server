@@ -1,7 +1,8 @@
+import ast
 import base64
 import datetime
 import json
-import random
+import pickle
 import time
 
 import jieba
@@ -251,6 +252,7 @@ class ImageListView(generics.ListAPIView):
     serializer_class = ImageSerializer
 
 
+# 获取图像Base64数据
 @csrf_exempt
 def get_image_base64(request, image_id):
     # 获取对应图片的实例，如果找不到返回404响应
@@ -382,3 +384,37 @@ class TestModuleListView(generics.ListAPIView):
     """测一测模块表单信息"""
     queryset = TestModule.objects.all()
     serializer_class = TestModuleSerializer
+
+
+# 加载决策树
+def load_decision_tree(file_path):
+    with open(file_path, "rb") as file:
+        loaded_tree = pickle.load(file)
+    return loaded_tree
+
+
+# 进行决策树决策
+def make_decision(decision_tree, current_question, selected_option):
+    try:
+        result = decision_tree[current_question][selected_option]
+        return result
+    except KeyError:
+        return "未知结果"
+
+
+# 决策树模型调用
+@csrf_exempt
+def test_model(request):
+    if request.method == 'POST':
+        question_list = request.POST.get('question_list')
+        question_list = json.loads(question_list)
+        option_list = request.POST.get('option_list')
+        option_list = json.loads(option_list)
+        ans = ''
+        # 进行决策
+        for i in range(len(question_list)):
+            tree = load_decision_tree("mental_server/model/测一测决策树.pkl")
+            result = make_decision(tree, question_list[i], option_list[i])
+            ans += result
+        # 打印结果
+        return JsonResponse({"result": ans})
