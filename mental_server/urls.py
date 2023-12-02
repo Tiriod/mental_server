@@ -42,7 +42,7 @@ urlpatterns = [
     path('api/v1/emotion/emotion_id/<int:emotion_id>/', views.EmotionListView.as_view(), name='api-emotions-list-id'),
     # “测一测”内容 API
     path('api/v1/testmodules/', views.TestModuleListView.as_view(), name='api-testModules'),
-    path('api/v1/testmodules/model/', views.test_model, name='api-test-model'),
+    path('api/v1/testmodules/model/', views.model_test, name='api-test-model'),
     # 管理员 API
     path('admin/', admin.site.urls, name='admin-site'),
 

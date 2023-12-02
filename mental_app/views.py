@@ -8,7 +8,7 @@ import time
 import jieba
 import pandas
 from django.shortcuts import get_object_or_404
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponseBadRequest, HttpResponseServerError
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework import generics
 from rest_framework.response import Response
@@ -402,19 +402,34 @@ def make_decision(decision_tree, current_question, selected_option):
         return "未知结果"
 
 
-# 决策树模型调用
 @csrf_exempt
-def test_model(request):
+def model_test(request):
     if request.method == 'POST':
-        question_list = request.POST.get('question_list')
-        question_list = json.loads(question_list)
-        option_list = request.POST.get('option_list')
-        option_list = json.loads(option_list)
-        ans = ''
-        # 进行决策
-        for i in range(len(question_list)):
-            tree = load_decision_tree("mental_server/model/测一测决策树.pkl")
-            result = make_decision(tree, question_list[i], option_list[i])
-            ans += result
-        # 打印结果
-        return JsonResponse({"result": ans})
+        try:
+            data = json.loads(request.body)
+            question_list = data.get('question_list')
+            option_list = data.get('option_list')
+
+            if question_list is None or option_list is None:
+                return HttpResponseBadRequest("Invalid JSON data: 'question_list' and 'option_list' are required.")
+
+            ans = ''
+            # 进行决策
+            for i in range(len(question_list)):
+                tree = load_decision_tree("mental_server/model/测一测决策树.pkl")
+                result = make_decision(tree, question_list[i], option_list[i])
+                ans += result
+
+            # 打印结果
+            return JsonResponse({"result": ans})
+
+        except json.JSONDecodeError as e:
+            print("Error decoding JSON:", str(e))
+            return HttpResponseBadRequest("Invalid JSON data")
+
+        except Exception as e:
+            print("Error processing request:", str(e))
+            return HttpResponseServerError("Internal Server Error")
+
+    return HttpResponseBadRequest("Invalid request method")
+
