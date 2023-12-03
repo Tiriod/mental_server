@@ -16,6 +16,9 @@ urlpatterns = [
     path('api/v1/shareloops/upload/', views.shareLoops_upload, name='api-shareLoop-upload'),
     # 用户 API
     path('api/v1/users/', views.UserListView.as_view(), name='api-user-list'),
+    path('api/v1/users/user_id/<int:user_id>/', views.UserListView.as_view(), name='api-get-user-information-by-id'),
+    path('api/v1/users/username/<str:username>/', views.UserListView.as_view(),
+         name='api-get-user-information-by-username'),
     # 心绪记录 API
     path('api/v1/emotionrecords/', views.EmotionRecordListView.as_view(), name='api-emotionRecord-list'),
     path('api/v1/emotionrecords/upload/', views.emotionRecord_upload, name='api-emotionRecords-upload'),
@@ -45,6 +48,8 @@ urlpatterns = [
     # “测一测”内容 API
     path('api/v1/testmodules/', views.TestModuleListView.as_view(), name='api-testModules'),
     path('api/v1/testmodules/model/', views.model_test, name='api-test-model'),
+    # 获取单个用户信息
+
     # 管理员 API
     path('admin/', admin.site.urls, name='admin-site'),
 

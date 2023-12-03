@@ -20,7 +20,6 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import linear_kernel
 
 import Utils.DateUtil
-from mental_server import settings
 from .models import Activity, Information, Book, ShareLoop, User, EmotionRecord, Food, Image, Meditation, Emotion, \
     TestModule, Audio
 from .serializers import (ActivitySerializer, InformationSerializer, BookSerializer, ShareLoopSerializer,
@@ -97,6 +96,35 @@ class UserListView(generics.ListAPIView):
     """用户表单信息"""
     queryset = User.objects.all()
     serializer_class = UserSerializer
+
+    def get(self, request, *args, **kwargs):
+        username = self.kwargs.get('username')
+        user_id = self.kwargs.get('user_id')
+        # 通过meditation查询的情况
+        if username:
+            try:
+                USER = User.objects.get(username=username)
+                # 返回获取到的数据
+                serializer = UserSerializer(USER)
+                return JsonResponse(serializer.data)
+            except User.DoesNotExist:
+                return JsonResponse({'detail': 'User not found'})
+
+        if user_id:
+            # 如果包含冥想的类型（meditation_type），返回符合条件的冥想信息
+            try:
+                USER = User.objects.get(user_id=user_id)
+                # 返回获取到的数据
+                serializer = UserSerializer(USER)
+                return JsonResponse(serializer.data)
+            except User.DoesNotExist:
+                return JsonResponse({'detail': 'User not found'})
+        else:
+            # 否则返回所有的冥想信息
+            queryset = self.filter_queryset(self.get_queryset())
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
 
 
 # 上传EmotionRecord的信息
@@ -460,4 +488,3 @@ def get_audio(request, audio_id):
         'base64_data': base64_data,
     }
     return JsonResponse(response_data)
-
