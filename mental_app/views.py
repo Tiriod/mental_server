@@ -391,7 +391,7 @@ class EmotionListView(generics.ListAPIView):
                 # 通过emotion_text来获取对应的emotion内容
                 emotion = Emotion.objects.get(emotion_text=emotion_text)
                 serializer = EmotionSerializer(emotion)  # 使用你的序列化器
-                return JsonResponse({'result': serializer.data})
+                return JsonResponse(serializer.data)
             except Meditation.DoesNotExist:
                 return Response({'detail': 'Meditation not found'}, status=status.HTTP_404_NOT_FOUND)
         if emotion_id:
