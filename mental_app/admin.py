@@ -152,7 +152,7 @@ class MeditationAdmin(admin.ModelAdmin):
 
 
 class AudioAdmin(admin.ModelAdmin):
-    list_display = ('audio_id', 'audio_file', 'audio_data')
+    list_display = ('audio_id', 'audio_data')
     list_editable = ('audio_data',)
 
 

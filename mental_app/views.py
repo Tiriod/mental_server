@@ -448,14 +448,16 @@ class AudioModuleListView(generics.ListAPIView):
 def get_audio(request, audio_id):
     audio_instance = get_object_or_404(Audio, audio_id=audio_id)
 
-    # 直接获取文件路径
-    file_path = os.path.join(settings.MEDIA_ROOT, audio_instance.audio_file.name)
-    file_path = os.path.normpath(file_path)  # 标准化路径，确保跨平台兼容
+    # 使用序列化器将图片实例序列化为JSON数据
+    serializer = ImageSerializer(audio_instance)
+    # 获取 Base64 数据
+    base64_data = serializer.data.get('audio_data', '')
+    # 在这里添加其他数据处理逻辑，然后构建要返回的JSON数据
+    response_data = {
+        'status': 'success',
+        'message': 'Image data retrieved successfully',
+        'image_id': audio_instance.audio_id,
+        'base64_data': base64_data,
+    }
+    return JsonResponse(response_data)
 
-    # 打开文件并读取内容
-    with open(file_path, 'rb') as file:
-        # 创建 HttpResponse 对象
-        response = HttpResponse(file.read(), content_type='audio/mp3')
-        # 设置文件名
-        response['Content-Disposition'] = f'attachment; filename="{os.path.basename(file_path)}"'
-        return response
