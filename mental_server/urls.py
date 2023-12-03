@@ -36,6 +36,8 @@ urlpatterns = [
          name='api-meditations-id-detail'),
     path('api/v1/meditations/meditation_type/<str:meditation_type>/', views.MeditationListView.as_view(),
          name='api-meditations-type-detail'),
+    # 音频文件获取
+    path('api/v1/audio/<str:audio_id>/', views.get_audio, name='api-get-audio'),
     # 心情信息 API
     path('api/v1/emotion/emotion_text/<str:emotion_text>/', views.EmotionListView.as_view(),
          name='api-emotions-list-text'),

@@ -9,6 +9,7 @@ https://docs.djangoproject.com/en/4.1/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.1/ref/settings/
 """
+import os
 from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-b4w@%w4jft26*(!11$t96zsnrewm73b*uykuwexokg1pcarfsa'
@@ -51,6 +52,9 @@ TEMPLATES = [
     },
 ]
 WSGI_APPLICATION = 'mental_server.wsgi.application'
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 
 DATABASES = {

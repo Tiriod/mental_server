@@ -1,27 +1,31 @@
-import ast
+import base64
 import base64
 import datetime
 import json
+import os
 import pickle
 import time
 
 import jieba
 import pandas
+from django.conf import settings
+from django.http import JsonResponse, HttpResponseBadRequest, HttpResponseServerError, Http404, \
+    HttpResponse
 from django.shortcuts import get_object_or_404
-from django.http import JsonResponse, HttpResponseBadRequest, HttpResponseServerError
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework import generics
-from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.response import Response
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import linear_kernel
 
 import Utils.DateUtil
+from mental_server import settings
 from .models import Activity, Information, Book, ShareLoop, User, EmotionRecord, Food, Image, Meditation, Emotion, \
-    TestModule
+    TestModule, Audio
 from .serializers import (ActivitySerializer, InformationSerializer, BookSerializer, ShareLoopSerializer,
                           UserSerializer, EmotionRecordSerializer, FoodSerializer, ImageSerializer,
-                          MeditationSerializer, EmotionSerializer, TestModuleSerializer)
+                          MeditationSerializer, EmotionSerializer, TestModuleSerializer, AudioSerializer)
 
 
 class ActivityListView(generics.ListAPIView):
@@ -433,3 +437,25 @@ def model_test(request):
 
     return HttpResponseBadRequest("Invalid request method")
 
+
+class AudioModuleListView(generics.ListAPIView):
+    """测一测模块表单信息"""
+    queryset = TestModule.objects.all()
+    serializer_class = AudioSerializer
+
+
+@csrf_exempt
+def get_audio(request, audio_id):
+    audio_instance = get_object_or_404(Audio, audio_id=audio_id)
+
+    # 直接获取文件路径
+    file_path = os.path.join(settings.MEDIA_ROOT, audio_instance.audio_file.name)
+    file_path = os.path.normpath(file_path)  # 标准化路径，确保跨平台兼容
+
+    # 打开文件并读取内容
+    with open(file_path, 'rb') as file:
+        # 创建 HttpResponse 对象
+        response = HttpResponse(file.read(), content_type='audio/mp3')
+        # 设置文件名
+        response['Content-Disposition'] = f'attachment; filename="{os.path.basename(file_path)}"'
+        return response
