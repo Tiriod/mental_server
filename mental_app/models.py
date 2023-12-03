@@ -101,6 +101,7 @@ class Audio(models.Model):
     """音频表"""
     audio_id = models.CharField(max_length=100, primary_key=True)  # 音频特征id
     audio_file = models.FileField(upload_to='audio/')
+    audio_data = models.TextField()
 
 
 class TestModule(models.Model):
