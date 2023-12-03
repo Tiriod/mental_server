@@ -449,7 +449,7 @@ def get_audio(request, audio_id):
     audio_instance = get_object_or_404(Audio, audio_id=audio_id)
 
     # 使用序列化器将图片实例序列化为JSON数据
-    serializer = ImageSerializer(audio_instance)
+    serializer = AudioSerializer(audio_instance)
     # 获取 Base64 数据
     base64_data = serializer.data.get('audio_data', '')
     # 在这里添加其他数据处理逻辑，然后构建要返回的JSON数据
