@@ -17,6 +17,7 @@ urlpatterns = [
     path('api/v1/shareloops/upload/', views.shareLoops_upload, name='api-shareLoop-upload'),
     # 用户 API
     path('api/v1/users/', views.UserListView.as_view(), name='api-user-list'),
+    path('api/v1/users/upload/', views.user_upload, name='api-user-upload'),
     path('api/v1/users/user_id/<int:user_id>/', views.UserListView.as_view(), name='api-get-user-information-by-id'),
     path('api/v1/users/username/<str:username>/', views.UserListView.as_view(),
          name='api-get-user-information-by-username'),

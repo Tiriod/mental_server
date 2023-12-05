@@ -143,6 +143,29 @@ class UserListView(generics.ListAPIView):
         return Response(serializer.data)
 
 
+@csrf_exempt
+def user_upload(request):
+    if request.method == 'POST':
+        # 使用 request.body 获取原始的 JSON 数据
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+        phone = request.POST.get('phone')
+        if phone:
+            # 创建新的心绪记录表
+            User.objects.create(
+                username=username,
+                password=password,
+                iphone=phone
+            )
+        else:
+            # 创建新的心绪记录表
+            User.objects.create(
+                username=username,
+                password=password
+            )
+        return JsonResponse({"status": "success"})
+
+
 # 上传EmotionRecord的信息
 @csrf_exempt
 def emotionRecord_upload(request):

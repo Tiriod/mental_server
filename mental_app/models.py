@@ -41,7 +41,7 @@ class ShareLoop(models.Model):
 class User(models.Model):
     """用户表"""
     user_id = models.AutoField(primary_key=True)  # 用户id
-    user_avatar_id = models.CharField(max_length=100)  # 用户头像图像地址
+    user_avatar_id = models.CharField(max_length=100, null=True, blank=True)  # 用户头像图像地址
     username = models.CharField(max_length=255)  # 用户名
     password = models.CharField(max_length=255)  # 用户密码
     iphone = models.CharField(max_length=20, null=True, blank=True)  # 用户手机号(允许为空)
