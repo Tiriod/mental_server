@@ -11,6 +11,7 @@ urlpatterns = [
     path('api/v1/information/', views.InformationListView.as_view(), name='api-information-list'),
     # 书目 API
     path('api/v1/books/', views.BookListView.as_view(), name='api-book-list'),
+    path('api/v1/books/<str:book_type>/', views.get_book_type, name='api-book-type'),
     # 分享圈 API
     path('api/v1/shareloops/', views.ShareLoopListView.as_view(), name='api-shareLoop-list'),
     path('api/v1/shareloops/upload/', views.shareLoops_upload, name='api-shareLoop-upload'),
@@ -26,7 +27,9 @@ urlpatterns = [
     # 食物地址 API
     path('api/v1/foods/', views.FoodListView.as_view(), name='api-food-list'),
     path('api/v1/foods/foodtistics/', views.food_Statistics, name='api-food-statistics'),
-    path('api/v1/foods/foodrecommendations/', views.food_Recommendations, name='api-food-recommendations'),
+    path('api/v1/foods/recommend/breakfast/', views.breakfast_meal, name='api-food-recommendations'),
+    path('api/v1/foods/recommend/lunch/', views.lunch_meal, name='api-food-recommendations'),
+    path('api/v1/foods/recommend/dinner/', views.dinner_meal, name='api-food-recommendations'),
     path('api/v1/foods/fooddetails/<str:food_name>/', views.food_Details, name='api-food-details'),
     # 图像查询地址
     path('api/v1/images/', views.ImageListView.as_view(), name='api-image-get'),
@@ -49,8 +52,9 @@ urlpatterns = [
     path('api/v1/testmodules/', views.TestModuleListView.as_view(), name='api-testModules'),
     path('api/v1/testmodules/model/', views.model_test, name='api-test-model'),
     # 获取单个用户信息
-
+    # 行为信息 API
+    path('api/v1/actions/', views.ActionListView.as_view(), name="api-actions"),
+    path('api/v1/actions/<int:action_id>/', views.get_action, name="api-action"),
     # 管理员 API
     path('admin/', admin.site.urls, name='admin-site'),
-
 ]

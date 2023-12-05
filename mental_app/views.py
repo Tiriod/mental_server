@@ -1,30 +1,25 @@
 import base64
 import base64
-import datetime
 import json
-import os
 import pickle
 import time
 
-import jieba
 import pandas
-from django.conf import settings
-from django.http import JsonResponse, HttpResponseBadRequest, HttpResponseServerError, Http404, \
-    HttpResponse
+from django.http import JsonResponse, HttpResponseBadRequest, HttpResponseServerError
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework import generics
 from rest_framework import status
 from rest_framework.response import Response
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import linear_kernel
 
 import Utils.DateUtil
 from .models import Activity, Information, Book, ShareLoop, User, EmotionRecord, Food, Image, Meditation, Emotion, \
-    TestModule, Audio
+    TestModule, Audio, Action
 from .serializers import (ActivitySerializer, InformationSerializer, BookSerializer, ShareLoopSerializer,
                           UserSerializer, EmotionRecordSerializer, FoodSerializer, ImageSerializer,
-                          MeditationSerializer, EmotionSerializer, TestModuleSerializer, AudioSerializer)
+                          MeditationSerializer, EmotionSerializer, TestModuleSerializer, AudioSerializer,
+                          ActionSerializer)
 
 
 class ActivityListView(generics.ListAPIView):
@@ -45,6 +40,17 @@ class BookListView(generics.ListAPIView):
     serializer_class = BookSerializer
 
 
+@csrf_exempt
+def get_book_type(request, book_type):
+    # 使用 filter 获取满足条件的所有书籍对象
+    books = Book.objects.filter(book_type=book_type)
+    # 序列化书籍对象列表
+    serializer = BookSerializer(books, many=True)
+    # 获取序列化后的数据
+    response_data = serializer.data
+    return JsonResponse(response_data, safe=False)
+
+
 class ShareLoopListView(generics.ListCreateAPIView):
     """用户分享圈信息"""
     queryset = ShareLoop.objects.all()
@@ -54,42 +60,52 @@ class ShareLoopListView(generics.ListCreateAPIView):
 # 心情分享圈POST上传
 @csrf_exempt
 def shareLoops_upload(request):
-    # 用户名称
-    username = request.POST.get('username')
-    # 用户心情
-    user_emotion = request.POST.get('user_emotion')
-    # 文案信息
-    shareLoop_copy_writing = request.POST.get('shareLoop_copy_writing')
-    # 提取图像数据列表
-    uploaded_images = request.FILES.getlist('image_list')
-    # 添加时间
-    release_time = request.POST.get('release_time')
-    # 保存每个图像数据到 Image 表，并构建 image_id 列表
-    image_id_list = []
-    for uploaded_image in uploaded_images:
-        image_id_list.append(image_storage(uploaded_image))
-        time.sleep(1)
-    # 创建返回的数据库表单
-    # 创建 ShareLoop 记录
-    ShareLoop.objects.create(
-        username=username,
-        user_emotion=user_emotion,
-        shareloop_copy_writing=shareLoop_copy_writing,
-        image_id_list=json.dumps(image_id_list),  # 将图像ID列表转为JSON字符串
-        release_time=release_time
-    )
-    # 在这里添加其他数据处理逻辑，然后构建要返回的JSON数据
-    response_data = {
-        'status': 'success',
-        'message': 'Data received successfully',
-        'username': username,
-        'user_emotion': user_emotion,
-        'shareLoop_copy_writing': shareLoop_copy_writing,
-        'image_id_list': image_id_list,
-        'release_time': release_time
-        # 在这里添加其他数据字段
-    }
-    return JsonResponse(response_data)
+    if request.method == "POST":
+        data = json.loads(request.body)
+
+        # 用户名称
+        username = data.get("username")
+        print("Username:", username)
+        # 用户心情
+        user_emotion = data.get("user_emotion")
+        # 文案信息
+        shareLoop_copy_writing = data.get("shareLoop_copy_writing")
+
+        # 获取上传的文件列表
+        uploaded_images = data.get("image_list", [])
+        print(uploaded_images)
+
+        image_id_list = []
+        for image_data in uploaded_images:
+            image_id = add_image_base64(image_data)
+            image_id_list.append(image_id)
+
+        # 添加时间
+        release_time = timezone.now()  # 使用带时区信息的当前时间
+        # 创建 ShareLoop 记录
+        ShareLoop.objects.create(
+            username=username,
+            user_emotion=user_emotion,
+            shareLoop_copy_writing=shareLoop_copy_writing,
+            image_id_list=json.dumps(image_id_list),  # 将图像ID列表转为JSON字符串
+            release_time=release_time
+        )
+
+        # 构建要返回的JSON数据
+        response_data = {
+            'status': 'success',
+            'message': 'Data received successfully',
+            'username': username,
+            'user_emotion': user_emotion,
+            'shareLoop_copy_writing': shareLoop_copy_writing,
+            'image_id_list': image_id_list,
+            'release_time': release_time
+            # 在这里添加其他数据字段
+        }
+        return JsonResponse(response_data)
+
+    else:
+        return JsonResponse({"error": "Invalid method."})
 
 
 class UserListView(generics.ListAPIView):
@@ -131,25 +147,25 @@ class UserListView(generics.ListAPIView):
 @csrf_exempt
 def emotionRecord_upload(request):
     if request.method == 'POST':
-        user_id = request.POST.get('user_id')
-        emotion_text = request.POST.get('emotion_text')
-        release_time = request.POST.get('release_time')
-        action_list_str = request.POST.get('action_list')
+        # 使用 request.body 获取原始的 JSON 数据
+        data = json.loads(request.body.decode('utf-8'))
+        user_id = data.get('user_id')
+        emotion_text = data.get('emotion_text')
+        action_list = data.get('action_list')
 
         # 获取对应用户的实例，如果找不到返回404响应
         user_instance = get_object_or_404(User, user_id=user_id)
 
-        # 将 action_list_str 转换为 Python 列表
-        try:
-            action_list = json.loads(action_list_str)
-        except json.JSONDecodeError:
-            return JsonResponse({'status': 'error', 'message': 'Invalid JSON format for action_list'})
+        # 添加时间
+        release_time = timezone.now()  # 使用带时区信息的当前时间
+        # 将时间格式化为字符串
+        formatted_time = release_time.strftime("%Y-%m-%dT%H:%M:%S")
 
         # 创建新的心绪记录表
         emotion_record = EmotionRecord.objects.create(
             user_id=user_instance,
             emotion_text=emotion_text,
-            release_time=release_time,
+            release_time=formatted_time,
             action_list=action_list,
         )
         # 在这里添加其他数据处理逻辑，然后构建要返回的JSON数据
@@ -219,7 +235,6 @@ def food_Statistics(request):
     calories = [food['calories'] for food in serializer.data]
     # 构建返回的字典
     response_data = {
-        'status': 'success',
         'id': food_ids,
         'type': food_types,
         'food_imageIDList': food_imageIDList,
@@ -232,50 +247,90 @@ def food_Statistics(request):
         return response_data  # 直接返回字典
 
 
+# 食物信息
+def food_statistics():
+    foods = Food.objects.all()
+    serializer = FoodSerializer(foods, many=True)
+    # 从序列化结果中提取所需的信息，这里假设 Food 模型有相应的字段，你可以根据实际情况修改
+    food_ids = [food['id'] for food in serializer.data]
+    food_types = [food['type'] for food in serializer.data]
+    food_imageIDList = [food['food_image_id'] for food in serializer.data]
+    food_name = [food['food_name'] for food in serializer.data]
+    calories = [food['calories'] for food in serializer.data]
+    # 构建返回的字典
+    response_data = {
+        'id': food_ids,
+        'type': food_types,
+        'food_imageIDList': food_imageIDList,
+        'food_name': food_name,
+        'calories': calories,
+    }
+    return response_data
+
+
 # 食物推荐
 @csrf_exempt
-def food_Recommendations(request):
-    food_data_response = food_Statistics(request)
-    food_data = json.loads(food_data_response.content)
+def breakfast_meal(request):
+    food_data = food_statistics()
+    # 将JSON数据转换为DataFrame
+    food_df = pandas.DataFrame(food_data)
+    # 根据热量需求筛选食物
+    filtered_data = food_df[food_df['calories'] <= 400]
+    # 按类型随机选择一种食物
+    selected_type = "肉蛋奶"
+    selected_food = filtered_data[filtered_data['type'] == selected_type].sample(2)
+    selected_type = "主食"
+    selected_food2 = filtered_data[filtered_data['type'] == selected_type].sample(1)
+    # 将两个选择的食物合并成一个列表
+    result_list = selected_food.to_dict('records') + selected_food2.to_dict('records')
+    # 使用JsonResponse返回结果
+    return JsonResponse({"recommended_meal": result_list})
 
-    # 将 'calories' 列表中的每个元素转换为字符串
-    food_data['calories'] = [str(calorie) for calorie in food_data['calories']]
 
-    # 将类型和卡路里拼接为一个文本
-    food_data['features'] = [' '.join([type_, str(calorie)]) for type_, calorie in
-                             zip(food_data['type'], food_data['calories'])]
+# 食物推荐
+@csrf_exempt
+def lunch_meal(request):
+    food_data = food_statistics()
+    # 将JSON数据转换为DataFrame
+    food_df = pandas.DataFrame(food_data)
+    # 根据热量需求筛选食物
+    filtered_data = food_df[food_df['calories'] <= 600]
+    # 按类型随机选择一种食物
+    selected_type = "主食"
+    selected_food = filtered_data[filtered_data['type'] == selected_type].sample(1)
+    selected_type = "肉蛋奶"
+    selected_food2 = filtered_data[filtered_data['type'] == selected_type].sample(2)
+    selected_type = "蔬果"
+    selected_food3 = filtered_data[filtered_data['type'] == selected_type].sample(2)
+    selected_type = "坚果"
+    selected_food4 = filtered_data[filtered_data['type'] == selected_type].sample(1)
+    # 将两个选择的食物合并成一个列表
+    result_list = selected_food.to_dict('records') + selected_food2.to_dict('records') + selected_food3.to_dict(
+        'records') + selected_food4.to_dict('records')
+    # 使用JsonResponse返回结果
+    return JsonResponse({"recommended_meal": result_list})
 
-    # 中文分词
-    food_data['features'] = [' '.join(jieba.cut(x)) for x in food_data['features']]
 
-    # 使用 TF-IDF 向量化食物的特征
-    tfidf_vectorizer = TfidfVectorizer()
-    tfidf_matrix = tfidf_vectorizer.fit_transform(food_data['features'])
-
-    # 计算余弦相似度
-    cosine_sim = linear_kernel(tfidf_matrix, tfidf_matrix)
-
-    # 获取食物名称到索引的映射
-    def get_recommendations(food_name, top_n=4):
-        idx = pandas.Series(range(len(food_data['food_name'])), index=food_data['food_name']).drop_duplicates()[
-            food_name]
-        sim_scores = list(enumerate(cosine_sim[idx]))
-        sim_scores = sorted(sim_scores, key=lambda x: x[1], reverse=True)
-        sim_scores = sim_scores[1: top_n + 1]  # 取前4个相似的食物
-        food_indices = [i[0] for i in sim_scores]
-        return [food_data['food_name'][i] for i in food_indices]
-
-    Date = datetime.datetime.now()
-    DAY = Date.day
-    # 示例：获取与某个食物相似的推荐
-    response_data = {
-        'status': 'success',
-        'message': 'Image data retrieved successfully',
-        'breakfast': get_recommendations(food_data['food_name'][DAY - 7], 4),
-        'lunch': get_recommendations(food_data['food_name'][DAY], 6),
-        'dinner': get_recommendations(food_data['food_name'][DAY + 7], 5),
-    }
-    return JsonResponse(response_data)
+# 食物推荐
+@csrf_exempt
+def dinner_meal(request):
+    food_data = food_statistics()
+    # 将JSON数据转换为DataFrame
+    food_df = pandas.DataFrame(food_data)
+    # 根据热量需求筛选食物
+    filtered_data = food_df[food_df['calories'] <= 400]
+    # 按类型随机选择一种食物
+    selected_type = "主食"
+    selected_food = filtered_data[filtered_data['type'] == selected_type].sample(1)
+    selected_type = "肉蛋奶"
+    selected_food2 = filtered_data[filtered_data['type'] == selected_type].sample(1)
+    selected_type = "蔬果"
+    selected_food3 = filtered_data[filtered_data['type'] == selected_type].sample(2)
+    # 将两个选择的食物合并成一个列表
+    result_list = selected_food.to_dict('records') + selected_food2.to_dict('records') + selected_food3.to_dict(
+        'records')
+    # 使用JsonResponse返回结果
+    return JsonResponse({"recommended_meal": result_list})
 
 
 class ImageListView(generics.ListAPIView):
@@ -311,6 +366,13 @@ def add_image(image_data, image_format='jpeg'):
     base64_data = f'data:image/{image_format};base64,{image_data}'
     Image.objects.create(image_id=image_id, image_data=base64_data)
     # 返回特征性的 image_id
+    return image_id
+
+
+def add_image_base64(base64_data):
+    time.sleep(1)
+    image_id = Utils.DateUtil.get_image_id()
+    Image.objects.create(image_id=image_id, image_data=base64_data)
     return image_id
 
 
@@ -403,8 +465,6 @@ class EmotionListView(generics.ListAPIView):
             except Meditation.DoesNotExist:
                 return Response({'detail': 'Meditation not found'}, status=status.HTTP_404_NOT_FOUND)
 
-        return JsonResponse({'status': 'error！', 'message': 'Nothing'})
-
 
 class EmotionRecordListView(generics.ListAPIView):
     """心绪记录表单信息"""
@@ -487,4 +547,21 @@ def get_audio(request, audio_id):
         'image_id': audio_instance.audio_id,
         'base64_data': base64_data,
     }
+    return JsonResponse(response_data)
+
+
+class ActionListView(generics.ListAPIView):
+    """行为表单信息"""
+    queryset = Action.objects.all()
+    serializer_class = ActionSerializer
+
+
+@csrf_exempt
+def get_action(request, action_id):
+    # 获取对应图片的实例，如果找不到返回404响应
+    ACTION = get_object_or_404(Action, action_id=action_id)
+    # 使用序列化器将图片实例序列化为JSON数据
+    serializer = ActionSerializer(ACTION)
+    # 在这里添加其他数据处理逻辑，然后构建要返回的JSON数据
+    response_data = serializer.data
     return JsonResponse(response_data)
