@@ -11,7 +11,7 @@ https://docs.djangoproject.com/en/4.1/ref/settings/
 """
 import os
 from pathlib import Path
-import pymysql
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-b4w@%w4jft26*(!11$t96zsnrewm73b*uykuwexokg1pcarfsa'
 DEBUG = True
@@ -38,7 +38,7 @@ MIDDLEWARE = [
 
 
 
-pymysql.install_as_MySQLdb()
+
 
 ROOT_URLCONF = 'mental_server.urls'
 TEMPLATES = [
